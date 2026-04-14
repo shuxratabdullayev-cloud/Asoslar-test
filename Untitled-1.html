@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buxgalteriya Simulyatori | FAXR MADAD KONSALT</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        .option-btn { transition: all 0.2s ease-in-out; }
+        .option-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // 60 ta maxsus savollar bazasi (6 mavzu * 10 savol)
+        const questionsDb = [
+            // 1-Mavzu: Moliyaviy hisobot elementlari
+            { type: 'theory', text: "Rahbar ofisga shaxsiy avtomobilini olib keldi va buxgalter uni korxona balansiga uzoq muddatli aktiv sifatida tirkab qo'ydi. Mulk huquqi korxonaga o'tmagan. Yil yakunida soliq tekshiruvida ushbu holat aniqlandi. Nima noto'g'ri?", options: ["Aktiv sharti to'liq bajarilmagan", "Majburiyat sharti to'liq bajarilmagan", "Kapital sharti to'liq bajarilmagan", "Xarajat sharti to'liq bajarilmagan"], answerIndex: 0 },
+            { type: 'theory', text: "Korxona yangi dastgoh xarid qildi, ammo u umuman ishlatishga yaroqsiz. Buxgalter uni yaroqli aktiv sifatida hisobga oldi va yillik hisobotni tasdiqlatdi. Nima yetishmayapti?", options: ["Kelgusidagi iqtisodiy naf kafolati", "Kelgusidagi moliyaviy zarar ehtimoli", "Kelgusidagi majburiyatlar to'liq kafolati", "Kelgusidagi xarajatlar aniq hisoboti"], answerIndex: 0 },
+            { type: 'theory', text: "Buxgalter ta'sischining shaxsiy qarzlarini korxona majburiyatlariga qo'shib yubordi. Oqibatda kompaniya bankrot yoqasida degan xulosa kelib chiqdi. Qanday tuzatsak bo'ladi?", options: ["Shaxsiy qarzlarni balansdan chiqarish", "Shaxsiy qarzlarni aktivlarga o'tkazish", "Shaxsiy qarzlarni foydaga yozish", "Shaxsiy qarzlarni xarajatga yozish"], answerIndex: 0 },
+            { type: 'theory', text: "Korxona bankdan yirik miqdorda qarz oldi. Buxgalter ushbu qarzni korxonaning xususiy kapitaliga qilib yozib qo'ydi. Quyidagi fikrlarning qaysi biri to'g'ri emas?", options: ["Bank qarzlari kapital hisoblanadi", "Bank qarzlari majburiyat hisoblanadi", "Bank qarzlari aktivlarni oshiradi", "Bank qarzlari qaytarilishi shart"], answerIndex: 0 },
+            { type: 'provodka', text: "Mijozlarga xizmat ko'rsatildi va to'lov darhol kassa orqali naqd pul shaklida to'liq qabul qilib olindi.", options: ["Debet kassa, kredit asosiy daromad", "Debet bank, kredit asosiy daromad", "Debet kassa, kredit taqsimlanmagan foyda", "Debet bank, kredit taqsimlanmagan foyda"], answerIndex: 0 },
+            { type: 'provodka', text: "Korxona xodimlariga oylik maosh hisoblandi, biroq mablag' yo'qligi sababli u hali xodimlarga to'lab berilmadi.", options: ["Debet davr xarajati, kredit majburiyat", "Debet davr daromadi, kredit majburiyat", "Debet ustav kapitali, kredit majburiyat", "Debet yig'ilgan foyda, kredit xarajat"], answerIndex: 0 },
+            { type: 'provodka', text: "Ta'sischi ustav kapitalini shakllantirish maqsadida korxonaning asosiy bank hisob raqamiga o'z ulushini o'tkazib berdi.", options: ["Debet bank hisobi, kredit ustav", "Debet kassa hisobi, kredit ustav", "Debet bank hisobi, kredit daromad", "Debet kassa hisobi, kredit daromad"], answerIndex: 0 },
+            { type: 'math', text: "Korxonada qirq million so'mlik aktivlar va o'n besh million so'mlik majburiyatlar mavjud. Asosiy balans tenglamasiga asosan xususiy kapital qancha bo'ladi?", options: ["Yigirma besh million so'mni tashkil", "Ellik besh million so'mni tashkil", "Qirq million so'mni tashkil", "O'n besh million so'mni tashkil"], answerIndex: 0 },
+            { type: 'math', text: "Ustav kapitali sakson million so'm, mol yetkazib beruvchilardan qarzdorlik o'ttiz million so'm. Korxonaning jami aktivlari qancha?", options: ["Bir yuz o'n million so'm", "Sakson million so'mni tashkil etadi", "Ellik million so'mni tashkil etadi", "O'ttiz million so'mni tashkil etadi"], answerIndex: 0 },
+            { type: 'math', text: "Mahsulot o'n besh million so'mga sotildi. Ushbu mahsulotning haqiqiy tannarxi o'n million so'm edi. Yalpi foydani toping.", options: ["Besh million so'mni tashkil etadi", "Yigirma besh million so'mni tashkil", "O'n besh million so'mni tashkil", "O'n million so'mni tashkil etadi"], answerIndex: 0 },
+
+            // 2-Mavzu: 8 turdagi operatsiya
+            { type: 'theory', text: "Korxona kassa apparatidagi barcha naqd pullarni inkassatsiya orqali bank hisob raqamiga topshirdi. Buxgalter buni ikkinchi tur operatsiya deb qayd etdi. Nima noto'g'ri?", options: ["Bu faqat birinchi tur operatsiyasi", "Bu faqat uchinchi tur operatsiyasi", "Bu faqat to'rtinchi tur operatsiyasi", "Bu faqat beshinchi tur operatsiyasi"], answerIndex: 0 },
+            { type: 'theory', text: "Korxona bankdan olingan qisqa muddatli kreditini naqd pul ko'rinishida to'liq qaytardi. Buxgalter balans jami summasini o'zgarishsiz qoldirdi. Nima yetishmayapti?", options: ["Aktiv va majburiyat teng kamayishi", "Aktiv va majburiyat teng ko'payishi", "Aktiv va kapital teng kamayishi", "Aktiv va kapital teng ko'payishi"], answerIndex: 0 },
+            { type: 'theory', text: "Mol yetkazib beruvchilardan materiallar nishya (qarzga) olinib omborga tushirildi. Buxgalter buni xarajat sifatida yozdi va foyda kamaydi. Qanday tuzatsak bo'ladi?", options: ["Xarajat o'rniga majburiyatni tan olish", "Xarajat o'rniga daromadni tan olish", "Xarajat o'rniga kapitalni tan olish", "Xarajat o'rniga zararni tan olish"], answerIndex: 0 },
+            { type: 'theory', text: "Ishchilarga ish haqi hisoblanganda korxonaning passiv qismi majburiyat orqali ko'payadi, xarajat orqali esa kapital kamayadi. Quyidagi fikrlarning qaysi biri to'g'ri emas?", options: ["Balans jami summasi doim oshadi", "Majburiyat summasi doim oshib boradi", "Kapital summasi doim kamayib boradi", "Balans tengligi doim saqlanib qoladi"], answerIndex: 0 },
+            { type: 'provodka', text: "Korxona ofis ehtiyojlari uchun sotib olingan kanselyariya mollarini to'g'ridan-to'g'ri xarajatga chiqardi.", options: ["Debet davr xarajati, kredit materiallar", "Debet davr xarajati, kredit bank", "Debet asosiy daromad, kredit kassa", "Debet ustav kapitali, kredit kassa"], answerIndex: 0 },
+            { type: 'provodka', text: "Kreditga tovar olindi, ushbu jarayon aktivlar va majburiyatlarni bir vaqtning o'zida oshirdi.", options: ["Debet tovarlar, kredit mol yetkazuvchilar", "Debet kassa, kredit mol yetkazuvchilar", "Debet tovarlar, kredit asosiy daromad", "Debet kassa, kredit asosiy daromad"], answerIndex: 0 },
+            { type: 'provodka', text: "Xaridor xizmat ko'rsatilmasdan oldin bo'nak (avans) pulini korxona bank hisobiga o'tkazib berdi.", options: ["Debet bank, kredit olingan bo'naklar", "Debet kassa, kredit olingan bo'naklar", "Debet bank, kredit asosiy daromad", "Debet kassa, kredit asosiy daromad"], answerIndex: 0 },
+            { type: 'math', text: "Balans jami yuz million so'm. Bankdan o'n million so'm kredit olindi. Yangi balans jami qancha?", options: ["Bir yuz o'n million so'm", "To'qson million so'mni tashkil etadi", "Yuz million so'mni tashkil etadi", "Saksonga tushib qolishi aniq bo'ladi"], answerIndex: 0 },
+            { type: 'math', text: "Korxona yigirma million so'mlik soliq qarzini bank hisobi orqali to'ladi. Aktivlar qanchaga kamaydi?", options: ["Yigirma million so'mga aynan kamaydi", "Qirq million so'mga aynan kamaydi", "O'n million so'mga aynan kamaydi", "Umuman o'zgarmasdan o'z holida qoldi"], answerIndex: 0 },
+            { type: 'math', text: "Ombordagi besh million so'mlik tovar ishlab chiqarishga sarflandi. Jami aktivlar summasi qanday o'zgaradi?", options: ["Besh million so'mga albatta kamayadi", "Besh million so'mga albatta ko'payadi", "O'n million so'mga albatta kamayadi", "Umuman o'zgarmasdan o'z holida qoldi"], answerIndex: 0 },
+
+            // 3-Mavzu: Tamoyillar va talablar
+            { type: 'theory', text: "Mijoz xizmat uchun to'lovni kelasi yili amalga oshiradi, biroq xizmat joriy yilda ko'rsatildi. Buxgalter daromadni tan olmadi. Oqibatda byudjetdan jarima keldi. Nima noto'g'ri?", options: ["Hisoblab yozish tamoyili to'liq buzilgan", "Kassa usuli to'g'ri to'liq qo'llanilgan", "Uzluksizlik tamoyili qat'iy to'liq buzilgan", "Ehtiyotkorlik tamoyili qat'iy to'liq buzilgan"], answerIndex: 0 },
+            { type: 'theory', text: "Korxona yaqin oylarda yopilishi aniq bo'ldi, ammo buxgalter besh yillik bank kreditini uzoq muddatli majburiyat sifatida ko'rsatishda davom etmoqda. Nima yetishmayapti?", options: ["Uzluksizlik tamoyilining to'xtatilishini hisobga olish", "Hisoblab yozish tamoyilini qat'iy qo'llash", "Tushunarlilik talabiga to'liq amal qilish", "Qiyosiylik talabiga to'liq amal qilish"], answerIndex: 0 },
+            { type: 'theory', text: "Korxona sudlashmoqda. Yutqazish xavfi juda yuqori va katta jarima to'lanishi mumkin. Buxgalter buni hisobotlarda umuman ko'rsatmadi. Qanday tuzatsak bo'ladi?", options: ["Ehtiyotkorlik tamoyili asosida zaxira yaratish", "Daromadlarni oshirib balansda tez ko'rsatish", "Sud jarayonini zudlik bilan to'xtatish", "Hisobotlarni faqat sud yakunlanganda topshirish"], answerIndex: 0 },
+            { type: 'theory', text: "Buxgalter barcha tranzaksiyalarni oddiy qog'ozga, hech qanday qoidalarsiz yozib bordi va buni tushunarlilik talabi deb atadi. Quyidagi fikrlarning qaysi biri to'g'ri emas?", options: ["Standartlarsiz yozish qonunan to'liq ruxsat etilgan", "Buxgalteriya qat'iy qoidalarga doim asoslanadi", "Tushunarlilik professional darajada bo'lishi shart", "Birlamchi hujjatlarsiz yozuvlar bekor qilinadi"], answerIndex: 0 },
+            { type: 'provodka', text: "Hisoblab yozish tamoyiliga asosan mijozlarga xizmat ko'rsatildi, biroq pul mablag'lari hali hisob raqamga kelib tushgani yo'q.", options: ["Debet debitor qarz, kredit daromad", "Debet kreditor qarz, kredit daromad", "Debet kassa hisobi, kredit daromad", "Debet debitor qarz, kredit xarajat"], answerIndex: 0 },
+            { type: 'provodka', text: "Ehtiyotkorlik tamoyiliga muvofiq xaridorlarning shubhali qarzlari bo'yicha maxsus zaxira fondi yaratildi.", options: ["Debet davr xarajati, kredit zaxira", "Debet asosiy daromad, kredit zaxira", "Debet ustav kapitali, kredit zaxira", "Debet debitor qarzi, kredit zaxira"], answerIndex: 0 },
+            { type: 'provodka', text: "Kelgusi oylar uchun ijara to'lovi oldindan bank orqali to'lab berildi, xarajat darhol tan olinmadi.", options: ["Debet bo'nak to'lovlari, kredit bank", "Debet davr xarajatlari, kredit bank", "Debet asosiy daromad, kredit bank", "Debet ustav kapitali, kredit bank"], answerIndex: 0 },
+            { type: 'math', text: "Joriy oyda oltmish million so'mlik xizmat ko'rsatildi, ammo naqd pulda faqat yigirma million so'm tushdi. Hisoblab yozish bo'yicha daromad qancha?", options: ["Oltmish million so'mni tashkil etadi", "Yigirma million so'mni tashkil etadi", "Qirq million so'mni tashkil etadi", "Sakson million so'mni tashkil etadi"], answerIndex: 0 },
+            { type: 'math', text: "Xodimlar uchun ellik million so'm maosh hisoblandi, faqat o'ttiz millioni to'landi. Hisoblab yozish bo'yicha joriy xarajat qancha?", options: ["Ellik million so'mni tashkil etadi", "O'ttiz million so'mni tashkil etadi", "Yigirma million so'mni tashkil etadi", "Sakson million so'mni tashkil etadi"], answerIndex: 0 },
+            { type: 'math', text: "Besh yillik kredit jami yuz million so'm. Uzluksizlik tamoyili to'xtatilsa (korxona yopilsa), qancha qismi joriy majburiyat bo'ladi?", options: ["Yuz million so'mning barchasi birdan", "Faqatgina yigirma million so'm qismi", "Saksonga million so'mlik aniq qismi", "Umuman majburiyat deb hisoblanmaydi endi"], answerIndex: 0 },
+
+            // 4-Mavzu: Hisobotlar
+            { type: 'theory', text: "Buxgalter balansning jami aktivlarini sakson million, jami passivlarini yetmish million so'm qilib hisobot topshirdi. Dastur buni qabul qilmadi. Nima noto'g'ri?", options: ["Aktiv va passiv tengligi buzilgan", "Foyda va zarar hisoblanmaganligi aniq", "Kapital miqdori keragidan ancha ko'p", "Soliqlar hisobotda umuman ko'rsatilmaganligi aniq"], answerIndex: 0 },
+            { type: 'theory', text: "Kompaniya bir yil davomida yaxshi daromad topdi, lekin kapital o'zgarishlari hisobotida kapitalning oshishi umuman aks etmagan. Nima yetishmayapti?", options: ["Sof foydaning kapitalga o'tkazilishi jarayoni", "Asosiy vositalar eskirishini hisobga olish", "Bank kreditlari miqdorini aniq qayd", "Kassa qoldig'ini daromadga aylantirish ishi"], answerIndex: 0 },
+            { type: 'theory', text: "Rahbar korxonaning joriy moliyaviy muvaffaqiyatini faqatgina balansning o'ziga qarab baholadi va xato xulosaga keldi. Qanday tuzatsak bo'ladi?", options: ["Foyda va zararlar hisobotini ko'rish", "Faqatgina kassa qoldig'ini qayta tekshirish", "Soliq inspeksiyasidan yangi ma'lumotnoma olish", "Asosiy vositalarni zudlik bilan sotish"], answerIndex: 0 },
+            { type: 'theory', text: "Buxgalter foyda va zararlar hisobotiga olingan bank kreditini daromad sifatida qatorga qo'shib hisoblab yubordi. Quyidagi fikrlarning qaysi biri to'g'ri emas?", options: ["Kredit kirimi korxona daromadi hisoblanadi", "Kredit miqdori faqat balansda ko'rinadi", "Daromad faqat ta'sischisiz ko'payish hisoblanadi", "Foyda hisobotiga kredit umuman kirmaydi"], answerIndex: 0 },
+            { type: 'provodka', text: "Yil oxirida barcha davr xarajatlari tranzit schyotidan yakuniy moliyaviy natija schyotiga yopildi.", options: ["Debet yakuniy natija, kredit xarajat", "Debet xarajat, kredit yakuniy natija", "Debet asosiy daromad, kredit xarajat", "Debet taqsimlanmagan foyda, kredit xarajat"], answerIndex: 0 },
+            { type: 'provodka', text: "Yil yakunlari bo'yicha aniqlangan sof foyda korxonaning taqsimlanmagan foydasi schyotiga o'tkazildi.", options: ["Debet yakuniy natija, kredit foyda", "Debet foyda, kredit yakuniy natija", "Debet kassa, kredit yakuniy natija", "Debet bank, kredit yakuniy natija"], answerIndex: 0 },
+            { type: 'provodka', text: "Ta'sischilarga o'tgan yilgi taqsimlanmagan foyda hisobidan joriy yilda dividendlar hisoblandi.", options: ["Debet taqsimlanmagan foyda, kredit majburiyat", "Debet asosiy daromad, kredit majburiyat", "Debet davr xarajatlari, kredit majburiyat", "Debet ustav kapitali, kredit majburiyat"], answerIndex: 0 },
+            { type: 'math', text: "Yil boshida kapital yuz million so'm edi. Yil davomida o'ttiz million foyda ko'rildi, o'n million dividend to'landi. Yil oxirida kapital qancha?", options: ["Bir yuz yigirma million so'm", "Bir yuz o'ttiz million so'm", "To'qson million so'mni tashkil etadi", "Bir yuz qirq million so'm"], answerIndex: 0 },
+            { type: 'math', text: "Daromadlar ikki yuz million so'm, sotish xarajatlari sakson million, ma'muriy xarajatlar yigirma million. Sof foydani hisoblang.", options: ["Yuz million so'mni tashkil etadi", "Bir yuz yigirma million so'm", "Ikki yuz million so'mni tashkil", "Sakson million so'mni tashkil etadi"], answerIndex: 0 },
+            { type: 'math', text: "Jami aktivlar besh yuz million so'm. Xususiy kapital ikki yuz million so'm. Jami majburiyatlar summasini aniqlang.", options: ["Uch yuz million so'mni tashkil", "Besh yuz million so'mni tashkil", "Yetti yuz million so'mni tashkil", "Ikki yuz million so'mni tashkil"], answerIndex: 0 },
+
+            // 5-Mavzu: Schyotlar
+            { type: 'theory', text: "Buxgalter kassa schyotining kredit tomoniga pul kirimini, debet tomoniga esa pul chiqimini yozib bordi. Kassa qoldig'i manfiy ko'rsatdi. Nima noto'g'ri?", options: ["Aktiv schyotlar qoidasi butunlay buzilgan", "Passiv schyotlar qoidasi butunlay buzilgan", "Tranzit schyotlar qoidasi butunlay buzilgan", "Eskirish schyotlari qoidasi butunlay buzilgan"], answerIndex: 0 },
+            { type: 'theory', text: "Asosiy vositalar bo'yicha eskirish hisoblandi, biroq hisobotda faqat aktivning to'liq boshlang'ich qiymatigina ko'rinib turibdi. Nima yetishmayapti?", options: ["Kontr-aktiv schyoti qiymatini ayirib ko'rsatish", "Aktiv schyotini to'liq yopib yuborish", "Passiv schyotga qo'shimcha summa yozish", "Tranzit schyotida qoldiqni saqlab qolish"], answerIndex: 0 },
+            { type: 'theory', text: "Daromadlar va xarajatlar schyotlari yil oxirida umuman yopilmadi va keyingi yilga qoldiq bo'lib o'tdi. Qanday tuzatsak bo'ladi?", options: ["Tranzit schyotlarni nolga tenglashtirib yopish", "Barcha qoldiqlarni kassa schyotiga o'tkazish", "Ustav kapitalini shu summaga oshirish", "Balansdan tashqari schyotga olib qo'yish"], answerIndex: 0 },
+            { type: 'theory', text: "Korxona vaqtincha ijaraga olgan asbob-uskunalarni bevosita o'zining asosiy vositalari schyotiga qo'shib yubordi. Quyidagi fikrlarning qaysi biri to'g'ri emas?", options: ["Ijara mulki o'z aktivi hisoblanadi", "Ijara mulki balansdan tashqarida turadi", "Mulk huquqi korxonaga umuman o'tmagan", "Uskunalar xususiy kapitalga kirmaydi mutlaqo"], answerIndex: 0 },
+            { type: 'provodka', text: "Kassa schyotining debet tomoniga xaridorlardan kelib tushgan savdo tushumlari qayd etildi.", options: ["Debet kassa, kredit asosiy daromad", "Debet kassa, kredit ustav kapitali", "Debet bank, kredit asosiy daromad", "Debet bank, kredit ustav kapitali"], answerIndex: 0 },
+            { type: 'provodka', text: "Passiv schyot hisoblangan bank krediti bo'yicha asosiy qarz summasi bank hisob raqamidan qisman so'ndirildi.", options: ["Debet bank krediti, kredit bank", "Debet bank hisobi, kredit bank", "Debet davr xarajati, kredit bank", "Debet ustav kapitali, kredit bank"], answerIndex: 0 },
+            { type: 'provodka', text: "Asosiy vositalar eskirishini hisobga oluvchi kontr-aktiv schyotga joriy davr uchun eskirish summasi yozildi.", options: ["Debet davr xarajati, kredit eskirish", "Debet eskirish, kredit davr xarajati", "Debet asosiy vosita, kredit eskirish", "Debet eskirish, kredit asosiy vosita"], answerIndex: 0 },
+            { type: 'math', text: "Kassada oy boshida qoldiq besh million. Debet aylanma yigirma million, kredit aylanma o'n million. Yakuniy qoldiq qancha?", options: ["O'n besh million so'mni tashkil", "Yigirma besh million so'mni tashkil", "Besh million so'mni tashkil etadi", "O'ttiz besh million so'mni tashkil"], answerIndex: 0 },
+            { type: 'math', text: "Kredit bo'yicha boshlang'ich qoldiq o'n million. Kredit aylanma yigirma million, debet aylanma besh million. Yakuniy qoldiq qancha?", options: ["Yigirma besh million so'mni tashkil", "O'ttiz besh million so'mni tashkil", "Besh million so'mni tashkil etadi", "O'n besh million so'mni tashkil"], answerIndex: 0 },
+            { type: 'math', text: "Daromad schyotida sakson million kredit aylanma bor. Uni yopish uchun debetga qancha yozish kerak?", options: ["Sakson million so'mni aynan yozish", "Qirq million so'mni aynan yozish", "Yuz million so'mni aynan yozish", "Umuman hech narsa yozish shartmas"], answerIndex: 0 },
+
+            // 6-Mavzu: Oʻtkazmalar
+            { type: 'theory', text: "Buxgalter tovar xarid qilinganda uni tovarlar schyoti debetiga yozdi, biroq kassa schyotining kreditiga yozishni esdan chiqardi. Nima noto'g'ri?", options: ["Ikki yoqlama yozuv to'liq buzilgan", "Bir yoqlama yozuv qoidasi buzilgan", "Balans jami summasi o'zgarishsiz qolgan", "Kassa qoldig'i me'yoridan ortiq kamaygan"], answerIndex: 0 },
+            { type: 'theory', text: "Murakkab o'tkazma tuzishda bitta debet va ikkita kredit ishtirok etdi. Biroq debet jami summasi kreditlar yig'indisidan farq qilmoqda. Nima yetishmayapti?", options: ["Debet va kredit jami tengligi", "Barcha summalarni faqat debetga yozish", "Barcha summalarni faqat kreditga yozish", "Uchinchi qo'shimcha kreditni yozish majburiyligi"], answerIndex: 0 },
+            { type: 'theory', text: "Hisobchi oylik maoshni to'lash o'tkazmasini tuzishda faqatgina bank hisobining kreditini belgiladi va to'lovni tasdiqladi. Qanday tuzatsak bo'ladi?", options: ["Ish haqi qarzdorligi debetini qo'shish", "Soliqlar qarzdorligi debetini albatta qo'shish", "Kassa hisobi debetini albatta qo'shish", "Foyda schyoti kreditini zudlik bilan qo'shish"], answerIndex: 0 },
+            { type: 'theory', text: "Mijozdan to'lov kelganda Dt Kassa va Kt Kassa deb bir xil schyot o'zida korrespondensiya qilingan. Quyidagi fikrlarning qaysi biri to'g'ri emas?", options: ["Bu yozuv hisobni mukammal to'g'rilaydi", "Bunday yozuv hech qanday ma'nosizdir", "Operatsiya aslo o'z aksini topmagan", "Balans jami summasi umuman o'zgarmaydi"], answerIndex: 0 },
+            { type: 'provodka', text: "Xodimga oylik maoshning bir qismi kassa orqali naqd, qolgan asosiy qismi bank plastik kartasiga o'tkazib berildi.", options: ["Debet majburiyat, kredit kassa bank", "Debet xarajat, kredit kassa bank", "Debet kassa bank, kredit majburiyat", "Debet kassa bank, kredit xarajat"], answerIndex: 0 },
+            { type: 'provodka', text: "Mol yetkazib beruvchilardan uzoq muddatli uskunalar olinib, buning uchun bankdan olingan maqsadli kredit hisobidan pul to'landi.", options: ["Debet uskunalar, kredit bank krediti", "Debet bank, kredit bank krediti", "Debet uskunalar, kredit davr xarajati", "Debet xarajat, kredit bank krediti"], answerIndex: 0 },
+            { type: 'provodka', text: "Sotilgan tovarlar tannarxi hisobdan chiqarildi va ayni vaqtda xaridorga ushbu tovarlar bo'yicha sotish daromadi qayd etildi.", options: ["Dt tannarx Kt tovar, Dt debitor Kt daromad", "Dt tovar Kt tannarx, Dt daromad Kt debitor", "Dt xarajat Kt kassa, Dt bank Kt daromad", "Dt kassa Kt tovar, Dt xarajat Kt bank"], answerIndex: 0 },
+            { type: 'math', text: "Murakkab o'tkazmada: Kredit Kassa bir million, Kredit Bank ikki million. Debet Ish haqi qarzi qancha bo'lishi kerak?", options: ["Uch million so'mni tashkil etadi", "Bir million so'mni tashkil etadi", "Ikki million so'mni tashkil etadi", "To'rt million so'mni tashkil etadi"], answerIndex: 0 },
+            { type: 'math', text: "Debet Tovar ellik million, Kredit Mol yetkazuvchi ellik million. Balans jami summasi qanday o'zgarishga uchradi?", options: ["Ellik million so'mga aynan oshdi", "Ellik million so'mga aynan kamaydi", "Umuman o'zgarmasdan o'z holida qoldi", "Yuz million so'mga aynan oshdi"], answerIndex: 0 },
+            { type: 'math', text: "O'tkazma tekshiruvi: Debet jami oltmish million, Kredit jami qirq besh million so'm. Farq summasi qanchani tashkil etmoqda?", options: ["O'n besh million so'mni tashkil", "Oltmish million so'mni tashkil etadi", "Qirq besh million so'mni tashkil", "Bir yuz besh million so'm"], answerIndex: 0 }
+        ];
+
+        // Shuffle function (Fisher-Yates)
+        const shuffleArray = (array) => {
+            const newArr = [...array];
+            for (let i = newArr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+            }
+            return newArr;
+        };
+
+        // Icons using simple SVG
+        const Icons = {
+            BookOpen: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>,
+            CheckCircle: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>,
+            XCircle: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>,
+            Clock: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>,
+            Shield: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>,
+            Award: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+        };
+
+        const App = () => {
+            const [gameState, setGameState] = useState('welcome'); // welcome, playing, result
+            const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+            const [score, setScore] = useState(0);
+            const [timeLeft, setTimeLeft] = useState(5400); // 90 minutes (60q * 1.5m)
+            const [selectedOption, setSelectedOption] = useState(null);
+            const [isChecking, setIsChecking] = useState(false);
+            const [shuffledOptions, setShuffledOptions] = useState([]);
+
+            const totalQuestions = questionsDb.length;
+            const currentQuestion = questionsDb[currentQuestionIndex];
+
+            // Setup questions randomly
+            useEffect(() => {
+                if (gameState === 'playing' && currentQuestion) {
+                    const mappedOptions = currentQuestion.options.map((opt, idx) => ({
+                        text: opt,
+                        isCorrect: idx === currentQuestion.answerIndex,
+                        letter: ['A', 'B', 'C', 'D'][idx]
+                    }));
+                    setShuffledOptions(shuffleArray(mappedOptions));
+                    setSelectedOption(null);
+                    setIsChecking(false);
+                }
+            }, [currentQuestionIndex, gameState]);
+
+            // Timer logic
+            useEffect(() => {
+                let timer;
+                if (gameState === 'playing' && timeLeft > 0) {
+                    timer = setInterval(() => {
+                        setTimeLeft((prev) => {
+                            if (prev <= 1) {
+                                clearInterval(timer);
+                                setGameState('result');
+                                return 0;
+                            }
+                            return prev - 1;
+                        });
+                    }, 1000);
+                }
+                return () => clearInterval(timer);
+            }, [gameState, timeLeft]);
+
+            const formatTime = (seconds) => {
+                const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+                const s = (seconds % 60).toString().padStart(2, '0');
+                return `${m}:${s}`;
+            };
+
+            const handleStart = () => {
+                setGameState('playing');
+                setCurrentQuestionIndex(0);
+                setScore(0);
+                setTimeLeft(5400);
+            };
+
+            const handleOptionClick = (option) => {
+                if (isChecking) return;
+                
+                setSelectedOption(option);
+                setIsChecking(true);
+                
+                if (option.isCorrect) {
+                    setScore(prev => prev + 1);
+                }
+
+                setTimeout(() => {
+                    if (currentQuestionIndex < totalQuestions - 1) {
+                        setCurrentQuestionIndex(prev => prev + 1);
+                    } else {
+                        setGameState('result');
+                    }
+                }, 1500);
+            };
+
+            const getOptionClass = (option) => {
+                if (!isChecking) return "bg-white border-slate-200 hover:border-brand-500 hover:bg-brand-50 text-slate-700";
+                
+                if (option === selectedOption) {
+                    return option.isCorrect 
+                        ? "bg-green-100 border-green-500 text-green-800 ring-2 ring-green-500" 
+                        : "bg-red-100 border-red-500 text-red-800 ring-2 ring-red-500";
+                }
+                
+                if (option.isCorrect) {
+                    return "bg-green-50 border-green-400 text-green-700 ring-1 ring-green-400";
+                }
+
+                return "bg-slate-50 border-slate-200 text-slate-400 opacity-60";
+            };
+
+            if (gameState === 'welcome') {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4">
+                        <div className="glass-panel w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+                            <div className="bg-brand-900 p-8 text-center text-white relative overflow-hidden">
+                                <div className="absolute top-0 right-0 opacity-10">
+                                    <svg width="200" height="200" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                </div>
+                                <div className="flex justify-center mb-4 text-brand-100">
+                                    <Icons.Shield />
+                                </div>
+                                <h2 className="text-xl font-medium tracking-wider mb-2 text-brand-100">FAXR MADAD KONSALT</h2>
+                                <h1 className="text-4xl font-bold mb-4">Buxgalteriya Simulyatori</h1>
+                                <p className="text-brand-100 max-w-lg mx-auto">Zamonaviy va professional yondashuv orqali buxgalteriya hisobi bo'yicha amaliy bilimlaringizni sinab ko'ring.</p>
+                            </div>
+                            <div className="p-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                    <div className="flex items-center space-x-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                        <div className="text-brand-500"><Icons.BookOpen /></div>
+                                        <div>
+                                            <p className="font-semibold text-slate-800">60 ta savol</p>
+                                            <p className="text-sm text-slate-500">Nazariya, provodka, hisob-kitob</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center space-x-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                        <div className="text-brand-500"><Icons.Clock /></div>
+                                        <div>
+                                            <p className="font-semibold text-slate-800">90 daqiqa</p>
+                                            <p className="text-sm text-slate-500">Muvaffaqiyatli yakunlash uchun</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={handleStart}
+                                    className="w-full bg-brand-700 hover:bg-brand-900 text-white font-bold py-4 px-8 rounded-xl text-lg transition-colors shadow-lg hover:shadow-xl flex justify-center items-center gap-2"
+                                >
+                                    Sinovni Boshlash <Icons.CheckCircle />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (gameState === 'playing') {
+                return (
+                    <div className="min-h-screen flex flex-col items-center py-8 px-4">
+                        <div className="w-full max-w-3xl mb-6 flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <div className="text-brand-700 bg-brand-100 p-2 rounded-lg">
+                                    <Icons.Shield />
+                                </div>
+                                <div>
+                                    <h2 className="font-bold text-slate-800 leading-tight">FAXR MADAD KONSALT</h2>
+                                    <p className="text-xs text-slate-500 font-medium tracking-wide">BUXGALTERIYA SIMULYATORI</p>
+                                </div>
+                            </div>
+                            <div className={`flex items-center gap-2 px-4 py-2 rounded-full font-mono font-bold ${timeLeft < 300 ? 'bg-red-100 text-red-700' : 'bg-slate-200 text-slate-700'}`}>
+                                <Icons.Clock />
+                                {formatTime(timeLeft)}
+                            </div>
+                        </div>
+
+                        <div className="glass-panel w-full max-w-3xl rounded-2xl shadow-lg border border-slate-200 flex flex-col">
+                            {/* Progress bar */}
+                            <div className="h-1.5 w-full bg-slate-100 rounded-t-2xl overflow-hidden">
+                                <div 
+                                    className="h-full bg-brand-500 transition-all duration-300"
+                                    style={{ width: `${((currentQuestionIndex) / totalQuestions) * 100}%` }}
+                                ></div>
+                            </div>
+
+                            <div className="p-8 flex-grow">
+                                <div className="flex justify-between items-end mb-6">
+                                    <span className="text-sm font-semibold text-brand-500 uppercase tracking-wider">
+                                        Savol {currentQuestionIndex + 1} / {totalQuestions}
+                                    </span>
+                                </div>
+                                
+                                <h3 className="text-2xl font-semibold text-slate-800 mb-8 leading-snug">
+                                    {currentQuestion.text}
+                                </h3>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {shuffledOptions.map((option, index) => {
+                                        const displayLetters = ['A', 'B', 'C', 'D'];
+                                        return (
+                                            <button
+                                                key={index}
+                                                onClick={() => handleOptionClick(option)}
+                                                disabled={isChecking}
+                                                className={`option-btn flex items-center p-4 border rounded-xl text-left font-medium ${getOptionClass(option)}`}
+                                            >
+                                                <span className={`w-8 h-8 rounded-md flex items-center justify-center mr-4 font-bold shrink-0 ${isChecking ? (option.isCorrect ? 'bg-green-200 text-green-900' : (option === selectedOption ? 'bg-red-200 text-red-900' : 'bg-slate-200 text-slate-600')) : 'bg-brand-100 text-brand-700'}`}>
+                                                    {displayLetters[index]}
+                                                </span>
+                                                <span className="leading-tight">{option.text}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (gameState === 'result') {
+                const percentage = Math.round((score / totalQuestions) * 100);
+                let message = "";
+                let colorClass = "";
+                
+                if (percentage >= 85) {
+                    message = "A'lo natija! Buxgalteriya asoslarini mukammal o'zlashtirgansiz.";
+                    colorClass = "text-green-600";
+                } else if (percentage >= 60) {
+                    message = "Yaxshi natija! Bilimlaringizni amaliyotda yanada mustahkamlang.";
+                    colorClass = "text-blue-600";
+                } else {
+                    message = "Qoniqarsiz natija. Qo'llanmani qayta o'qib chiqish tavsiya etiladi.";
+                    colorClass = "text-red-600";
+                }
+
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4">
+                        <div className="glass-panel w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-slate-200 text-center">
+                            <div className="bg-slate-50 p-8 border-b border-slate-100">
+                                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-brand-100 text-brand-600 mb-4">
+                                    <Icons.Award />
+                                </div>
+                                <h1 className="text-3xl font-bold text-slate-800 mb-2">Sinov Yakunlandi</h1>
+                                <p className="text-slate-500 font-medium">FAXR MADAD KONSALT O'quv Markazi</p>
+                            </div>
+                            
+                            <div className="p-8">
+                                <div className="text-7xl font-bold mb-4 text-slate-800">
+                                    {score}<span className="text-3xl text-slate-400">/{totalQuestions}</span>
+                                </div>
+                                <div className={`text-xl font-semibold mb-2 ${colorClass}`}>
+                                    {percentage}% To'g'ri
+                                </div>
+                                <p className="text-slate-600 mb-8 max-w-sm mx-auto">
+                                    {message}
+                                </p>
+                                
+                                <button 
+                                    onClick={() => window.location.reload()}
+                                    className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-6 rounded-xl transition-colors"
+                                >
+                                    Natijani saqlash va chiqish
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return null;
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
